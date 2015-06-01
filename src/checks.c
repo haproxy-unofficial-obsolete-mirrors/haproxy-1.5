@@ -614,7 +614,7 @@ static void chk_report_conn_err(struct connection *conn, int errno_bck, int expi
 			}
 			else if (check->last_started_step && check->last_started_step->action == TCPCHK_ACT_EXPECT) {
 				if (check->last_started_step->string)
-					chunk_appendf(chk, " (string '%s')", check->last_started_step->string);
+					chunk_appendf(chk, " (expect string '%s')", check->last_started_step->string);
 				else if (check->last_started_step->expect_regex)
 					chunk_appendf(chk, " (expect regex)");
 			}
@@ -1444,7 +1444,10 @@ static int connect_chk(struct task *t)
 	quickack = check->type == 0 || check->type == PR_O2_TCPCHK_CHK;
 
 	if (check->type == PR_O2_TCPCHK_CHK && !LIST_ISEMPTY(&s->proxy->tcpcheck_rules)) {
-		struct tcpcheck_rule *r = (struct tcpcheck_rule *) s->proxy->tcpcheck_rules.n;
+		struct tcpcheck_rule *r;
+
+		r = LIST_NEXT(&s->proxy->tcpcheck_rules, struct tcpcheck_rule *, list);
+
 		/* if first step is a 'connect', then tcpcheck_main must run it */
 		if (r->action == TCPCHK_ACT_CONNECT) {
 			tcpcheck_main(conn);
@@ -1859,7 +1862,7 @@ static int tcpcheck_get_step_id(struct server *s)
 static void tcpcheck_main(struct connection *conn)
 {
 	char *contentptr;
-	struct tcpcheck_rule *cur, *next;
+	struct tcpcheck_rule *next;
 	int done = 0, ret = 0;
 	struct check *check = conn->owner;
 	struct server *s = check->server;
@@ -1916,25 +1919,23 @@ static void tcpcheck_main(struct connection *conn)
 		check->bo->o = 0;
 		check->bi->p = check->bi->data;
 		check->bi->i = 0;
-		cur = check->current_step = LIST_ELEM(head->n, struct tcpcheck_rule *, list);
+		check->current_step = LIST_ELEM(head->n, struct tcpcheck_rule *, list);
 		t->expire = tick_add(now_ms, MS_TO_TICKS(check->inter));
 		if (s->proxy->timeout.check)
 			t->expire = tick_add_ifset(now_ms, s->proxy->timeout.check);
-	}
-	/* keep on processing step */
-	else {
-		cur = check->current_step;
 	}
 
 	/* It's only the rules which will enable send/recv */
 	__conn_data_stop_both(conn);
 
 	while (1) {
-		/* we have to try to flush the output buffer before reading, at the end,
-		 * or if we're about to send a string that does not fit in the remaining space.
+		/* We have to try to flush the output buffer before reading, at
+		 * the end, or if we're about to send a string that does not fit
+		 * in the remaining space. That explains why we break out of the
+		 * loop after this control.
 		 */
 		if (check->bo->o &&
-		    (&cur->list == head ||
+		    (&check->current_step->list == head ||
 		     check->current_step->action != TCPCHK_ACT_SEND ||
 		     check->current_step->string_len >= buffer_total_space(check->bo))) {
 
@@ -1944,19 +1945,18 @@ static void tcpcheck_main(struct connection *conn)
 					__conn_data_stop_both(conn);
 					goto out_end_tcpcheck;
 				}
-				goto out_need_io;
+				break;
 			}
 		}
 
-		/* did we reach the end ? If so, let's check that everything was sent */
-		if (&cur->list == head) {
-			if (check->bo->o)
-				goto out_need_io;
+		if (&check->current_step->list == head)
 			break;
-		}
 
-		/* have 'next' point to the next rule or NULL if we're on the last one */
-		next = (struct tcpcheck_rule *)cur->list.n;
+		/* have 'next' point to the next rule or NULL if we're on the
+		 * last one, connect() needs this.
+		 */
+		next = LIST_NEXT(&check->current_step->list, struct tcpcheck_rule *, list);
+
 		if (&next->list == head)
 			next = NULL;
 
@@ -2058,8 +2058,10 @@ static void tcpcheck_main(struct connection *conn)
 			}
 
 			/* allow next rule */
-			cur = (struct tcpcheck_rule *)cur->list.n;
-			check->current_step = cur;
+			check->current_step = LIST_NEXT(&check->current_step->list, struct tcpcheck_rule *, list);
+
+			if (&check->current_step->list == head)
+				break;
 
 			/* don't do anything until the connection is established */
 			if (!(conn->flags & CO_FL_CONNECTED)) {
@@ -2113,8 +2115,10 @@ static void tcpcheck_main(struct connection *conn)
 			*check->bo->p = '\0'; /* to make gdb output easier to read */
 
 			/* go to next rule and try to send */
-			cur = (struct tcpcheck_rule *)cur->list.n;
-			check->current_step = cur;
+			check->current_step = LIST_NEXT(&check->current_step->list, struct tcpcheck_rule *, list);
+
+			if (&check->current_step->list == head)
+				break;
 		} /* end 'send' */
 		else if (check->current_step->action == TCPCHK_ACT_EXPECT) {
 			if (unlikely(check->result == CHK_RES_FAILED))
@@ -2134,7 +2138,7 @@ static void tcpcheck_main(struct connection *conn)
 					}
 				}
 				else
-					goto out_need_io;
+					break;
 			}
 
 			/* mark the step as started */
@@ -2167,14 +2171,14 @@ static void tcpcheck_main(struct connection *conn)
 				goto out_end_tcpcheck;
 			}
 
-			if (!done && (cur->string != NULL) && (check->bi->i < cur->string_len) )
+			if (!done && (check->current_step->string != NULL) && (check->bi->i < check->current_step->string_len) )
 				continue; /* try to read more */
 
 		tcpcheck_expect:
-			if (cur->string != NULL)
-				ret = my_memmem(contentptr, check->bi->i, cur->string, cur->string_len) != NULL;
-			else if (cur->expect_regex != NULL)
-				ret = regex_exec(cur->expect_regex, contentptr);
+			if (check->current_step->string != NULL)
+				ret = my_memmem(contentptr, check->bi->i, check->current_step->string, check->current_step->string_len) != NULL;
+			else if (check->current_step->expect_regex != NULL)
+				ret = regex_exec(check->current_step->expect_regex, contentptr);
 
 			if (!ret && !done)
 				continue; /* try to read more */
@@ -2182,11 +2186,11 @@ static void tcpcheck_main(struct connection *conn)
 			/* matched */
 			if (ret) {
 				/* matched but we did not want to => ERROR */
-				if (cur->inverse) {
+				if (check->current_step->inverse) {
 					/* we were looking for a string */
-					if (cur->string != NULL) {
+					if (check->current_step->string != NULL) {
 						chunk_printf(&trash, "TCPCHK matched unwanted content '%s' at step %d",
-								cur->string, tcpcheck_get_step_id(s));
+						             check->current_step->string, tcpcheck_get_step_id(s));
 					}
 					else {
 					/* we were looking for a regex */
@@ -2198,8 +2202,12 @@ static void tcpcheck_main(struct connection *conn)
 				}
 				/* matched and was supposed to => OK, next step */
 				else {
-					cur = (struct tcpcheck_rule*)cur->list.n;
-					check->current_step = cur;
+					/* allow next rule */
+					check->current_step = LIST_NEXT(&check->current_step->list, struct tcpcheck_rule *, list);
+
+					if (&check->current_step->list == head)
+						break;
+
 					if (check->current_step->action == TCPCHK_ACT_EXPECT)
 						goto tcpcheck_expect;
 					__conn_data_stop_recv(conn);
@@ -2208,9 +2216,13 @@ static void tcpcheck_main(struct connection *conn)
 			else {
 			/* not matched */
 				/* not matched and was not supposed to => OK, next step */
-				if (cur->inverse) {
-					cur = (struct tcpcheck_rule*)cur->list.n;
-					check->current_step = cur;
+				if (check->current_step->inverse) {
+					/* allow next rule */
+					check->current_step = LIST_NEXT(&check->current_step->list, struct tcpcheck_rule *, list);
+
+					if (&check->current_step->list == head)
+						break;
+
 					if (check->current_step->action == TCPCHK_ACT_EXPECT)
 						goto tcpcheck_expect;
 					__conn_data_stop_recv(conn);
@@ -2218,9 +2230,9 @@ static void tcpcheck_main(struct connection *conn)
 				/* not matched but was supposed to => ERROR */
 				else {
 					/* we were looking for a string */
-					if (cur->string != NULL) {
+					if (check->current_step->string != NULL) {
 						chunk_printf(&trash, "TCPCHK did not match content '%s' at step %d",
-								cur->string, tcpcheck_get_step_id(s));
+						             check->current_step->string, tcpcheck_get_step_id(s));
 					}
 					else {
 					/* we were looking for a regex */
@@ -2234,14 +2246,20 @@ static void tcpcheck_main(struct connection *conn)
 		} /* end expect */
 	} /* end loop over double chained step list */
 
-	set_server_check_status(check, HCHK_STATUS_L7OKD, "(tcp-check)");
-	goto out_end_tcpcheck;
+	/* We're waiting for some I/O to complete, we've reached the end of the
+	 * rules, or both. Do what we have to do, otherwise we're done.
+	 */
+	if (&check->current_step->list == head && !check->bo->o) {
+		set_server_check_status(check, HCHK_STATUS_L7OKD, "(tcp-check)");
+		goto out_end_tcpcheck;
+	}
 
- out_need_io:
+	/* warning, current_step may now point to the head */
 	if (check->bo->o)
 		__conn_data_want_send(conn);
 
-	if (check->current_step->action == TCPCHK_ACT_EXPECT)
+	if (&check->current_step->list != head &&
+	    check->current_step->action == TCPCHK_ACT_EXPECT)
 		__conn_data_want_recv(conn);
 	return;
 
@@ -2257,7 +2275,6 @@ static void tcpcheck_main(struct connection *conn)
 		conn->flags |= CO_FL_ERROR;
 
 	__conn_data_stop_both(conn);
-
 	return;
 }
 
