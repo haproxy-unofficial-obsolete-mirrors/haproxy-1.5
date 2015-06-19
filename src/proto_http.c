@@ -6775,12 +6775,15 @@ int http_response_forward_body(struct session *s, struct channel *res, int an_bi
 	if (res->flags & CF_SHUTR) {
 		if ((s->req->flags & (CF_SHUTR|CF_SHUTW)) == (CF_SHUTR|CF_SHUTW))
 			goto aborted_xfer;
-		if (!(s->flags & SN_ERR_MASK))
-			s->flags |= SN_ERR_SRVCL;
-		s->be->be_counters.srv_aborts++;
-		if (objt_server(s->target))
-			objt_server(s->target)->counters.srv_aborts++;
-		goto return_bad_res_stats_ok;
+		/* If we have some pending data, we continue the processing */
+		if (!buffer_pending(res->buf)) {
+			if (!(s->flags & SN_ERR_MASK))
+				s->flags |= SN_ERR_SRVCL;
+			s->be->be_counters.srv_aborts++;
+			if (objt_server(s->target))
+				objt_server(s->target)->counters.srv_aborts++;
+			goto return_bad_res_stats_ok;
+		}
 	}
 
 	/* we need to obey the req analyser, so if it leaves, we must too */
