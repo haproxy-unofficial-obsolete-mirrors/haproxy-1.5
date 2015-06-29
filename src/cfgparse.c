@@ -1841,6 +1841,7 @@ int cfg_parse_peers(const char *file, int linenum, char **args, int kwm)
 				curpeers->peers_fe->options2 |= PR_O2_INDEPSTR | PR_O2_SMARTCON | PR_O2_SMARTACC;
 				curpeers->peers_fe->conf.args.file = curpeers->peers_fe->conf.file = strdup(file);
 				curpeers->peers_fe->conf.args.line = curpeers->peers_fe->conf.line = linenum;
+				curpeers->peers_fe->bind_proc = 0; /* will be filled by users */
 
 				bind_conf = bind_conf_alloc(&curpeers->peers_fe->conf.bind, file, linenum, args[2]);
 
@@ -6169,12 +6170,6 @@ int check_config_validity()
 			}
 		}
 
-		if (global.nbproc > 1 && curproxy->table.peers.name) {
-			Alert("Proxy '%s': peers can't be used in multi-process mode (nbproc > 1).\n",
-			      curproxy->id);
-			cfgerr++;
-		}
-
 		switch (curproxy->mode) {
 		case PR_MODE_HEALTH:
 			cfgerr += proxy_cfg_ensure_no_http(curproxy);
@@ -7113,23 +7108,23 @@ out_uri_auth_compat:
 		list_for_each_entry(bind_conf, &curproxy->conf.bind, by_fe) {
 			unsigned long mask;
 
-			mask = bind_conf->bind_proc ? bind_conf->bind_proc : ~0UL;
+			mask = bind_conf->bind_proc ? bind_conf->bind_proc : nbits(global.nbproc);
 			curproxy->bind_proc |= mask;
 		}
 
 		if (!curproxy->bind_proc)
-			curproxy->bind_proc = ~0UL;
+			curproxy->bind_proc = nbits(global.nbproc);
 	}
 
 	if (global.stats_fe) {
 		list_for_each_entry(bind_conf, &global.stats_fe->conf.bind, by_fe) {
 			unsigned long mask;
 
-			mask = bind_conf->bind_proc ? bind_conf->bind_proc : ~0UL;
+			mask = bind_conf->bind_proc ? bind_conf->bind_proc : nbits(global.nbproc);
 			global.stats_fe->bind_proc |= mask;
 		}
 		if (!global.stats_fe->bind_proc)
-			global.stats_fe->bind_proc = ~0UL;
+			global.stats_fe->bind_proc = nbits(global.nbproc);
 	}
 
 	/* propagate bindings from frontends to backends. Don't do it if there
@@ -7146,7 +7141,7 @@ out_uri_auth_compat:
 	for (curproxy = proxy; curproxy; curproxy = curproxy->next) {
 		if (curproxy->bind_proc)
 			continue;
-		curproxy->bind_proc = ~0UL;
+		curproxy->bind_proc = nbits(global.nbproc);
 	}
 
 	/*******************************************************/
@@ -7399,13 +7394,18 @@ out_uri_auth_compat:
 				global.last_checks |= cfg_opts2[optnum].checks;
 	}
 
+	/* compute the required process bindings for the peers */
+	for (curproxy = proxy; curproxy; curproxy = curproxy->next)
+		if (curproxy->table.peers.p)
+			curproxy->table.peers.p->peers_fe->bind_proc |= curproxy->bind_proc;
+
 	if (peers) {
 		struct peers *curpeers = peers, **last;
 		struct peer *p, *pb;
 
-		/* Remove all peers sections which don't have a valid listener.
-		 * This can happen when a peers section is never referenced and
-		 * does not contain a local peer.
+		/* Remove all peers sections which don't have a valid listener,
+		 * which are not used by any table, or which are bound to more
+		 * than one process.
 		 */
 		last = &peers;
 		while (*last) {
@@ -7420,6 +7420,18 @@ out_uri_auth_compat:
 			else if (!curpeers->peers_fe) {
 				Warning("Removing incomplete section 'peers %s' (no peer named '%s').\n",
 					curpeers->id, localpeer);
+			}
+			else if (popcount(curpeers->peers_fe->bind_proc) != 1) {
+				/* either it's totally stopped or too much used */
+				if (curpeers->peers_fe->bind_proc) {
+					Alert("Peers section '%s': peers referenced by sections "
+					      "running in different processes (%d different ones). "
+					      "Check global.nbproc and all tables' bind-process "
+					      "settings.\n", curpeers->id, popcount(curpeers->peers_fe->bind_proc));
+					cfgerr++;
+				}
+				stop_proxy(curpeers->peers_fe);
+				curpeers->peers_fe = NULL;
 			}
 			else {
 				last = &curpeers->next;

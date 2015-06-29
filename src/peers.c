@@ -1337,6 +1337,15 @@ static struct task *process_peer_sync(struct task * task)
 
 	task->expire = TICK_ETERNITY;
 
+	if (!st->sessions->peer->peers->peers_fe) {
+		/* this one was never started, kill it */
+		signal_unregister_handler(st->sighandler);
+		st->table->sync_task = NULL;
+		task_delete(st->sync_task);
+		task_free(st->sync_task);
+		return NULL;
+	}
+
 	if (!stopping) {
 		/* Normal case (not soft stop)*/
 		if (((st->flags & SHTABLE_RESYNC_STATEMASK) == SHTABLE_RESYNC_FROMLOCAL) &&
@@ -1524,8 +1533,8 @@ void peers_register_table(struct peers *peers, struct stktable *table)
 	st->sync_task->process = process_peer_sync;
 	st->sync_task->expire = TICK_ETERNITY;
 	st->sync_task->context = (void *)st;
-	table->sync_task =st->sync_task;
-	signal_register_task(0, table->sync_task, 0);
+	table->sync_task = st->sync_task;
+	st->sighandler = signal_register_task(0, table->sync_task, 0);
 	task_wakeup(st->sync_task, TASK_WOKEN_INIT);
 }
 

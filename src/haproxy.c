@@ -216,7 +216,7 @@ unsigned int warned = 0;
 void display_version()
 {
 	printf("HA-Proxy version " HAPROXY_VERSION " " HAPROXY_DATE"\n");
-	printf("Copyright 2000-2015 Willy Tarreau <w@1wt.eu>\n\n");
+	printf("Copyright 2000-2015 Willy Tarreau <willy@haproxy.org>\n\n");
 }
 
 void display_build_opts()
@@ -1548,6 +1548,7 @@ int main(int argc, char **argv)
 
 	if (global.mode & (MODE_DAEMON | MODE_SYSTEMD)) {
 		struct proxy *px;
+		struct peers *curpeers;
 		int ret = 0;
 		int *children = calloc(global.nbproc, sizeof(int));
 		int proc;
@@ -1588,6 +1589,15 @@ int main(int argc, char **argv)
 		free(global.chroot);  global.chroot = NULL;
 		free(global.pidfile); global.pidfile = NULL;
 
+		if (proc == global.nbproc) {
+			if (global.mode & MODE_SYSTEMD) {
+				protocol_unbind_all();
+				for (proc = 0; proc < global.nbproc; proc++)
+					while (waitpid(children[proc], NULL, 0) == -1 && errno == EINTR);
+			}
+			exit(0); /* parent must leave */
+		}
+
 		/* we might have to unbind some proxies from some processes */
 		px = proxy;
 		while (px != NULL) {
@@ -1598,13 +1608,17 @@ int main(int argc, char **argv)
 			px = px->next;
 		}
 
-		if (proc == global.nbproc) {
-			if (global.mode & MODE_SYSTEMD) {
-				protocol_unbind_all();
-				for (proc = 0; proc < global.nbproc; proc++)
-					while (waitpid(children[proc], NULL, 0) == -1 && errno == EINTR);
-			}
-			exit(0); /* parent must leave */
+		/* we might have to unbind some peers sections from some processes */
+		for (curpeers = peers; curpeers; curpeers = curpeers->next) {
+			if (!curpeers->peers_fe)
+				continue;
+
+			if (curpeers->peers_fe->bind_proc & (1UL << proc))
+				continue;
+
+			stop_proxy(curpeers->peers_fe);
+			/* disable this peer section so that it kills itself */
+			curpeers->peers_fe = NULL;
 		}
 
 		free(children);
