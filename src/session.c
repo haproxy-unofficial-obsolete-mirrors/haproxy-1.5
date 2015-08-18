@@ -2806,6 +2806,33 @@ smp_fetch_sc_stkctr(struct session *l4, const struct arg *args, const char *kw)
 	return &l4->stkctr[num];
 }
 
+/* same as smp_fetch_sc_stkctr() but dedicated to src_* and can create
+ * the entry if it doesn't exist yet. This is needed for a few fetch
+ * functions which need to create an entry, such as src_inc_gpc* and
+ * src_clr_gpc*.
+ */
+struct stkctr *
+smp_create_src_stkctr(struct session *sess, const struct arg *args, const char *kw)
+{
+	static struct stkctr stkctr;
+	struct stktable_key *key;
+	struct connection *conn = objt_conn(sess->si[0].end);
+
+	if (strncmp(kw, "src_", 4) != 0)
+		return NULL;
+
+	if (!conn)
+		return NULL;
+
+	key = addr_to_stktable_key(&conn->addr.from, args->data.prx->table.type);
+	if (!key)
+		return NULL;
+
+	stkctr.table = &args->data.prx->table;
+	stkctr_set_entry(&stkctr, stktable_update_key(stkctr.table, key));
+	return &stkctr;
+}
+
 /* set return a boolean indicating if the requested session counter is
  * currently being tracked or not.
  * Supports being called as "sc[0-9]_tracked" only.
@@ -2887,6 +2914,9 @@ smp_fetch_sc_inc_gpc0(struct proxy *px, struct session *l4, void *l7, unsigned i
 	if (!stkctr)
 		return 0;
 
+	if (stkctr_entry(stkctr) == NULL)
+		stkctr = smp_create_src_stkctr(l4, args, kw);
+
 	smp->flags = SMP_F_VOL_TEST;
 	smp->type = SMP_T_UINT;
 	smp->data.uint = 0;
@@ -2923,6 +2953,9 @@ smp_fetch_sc_clr_gpc0(struct proxy *px, struct session *l4, void *l7, unsigned i
 
 	if (!stkctr)
 		return 0;
+
+	if (stkctr_entry(stkctr) == NULL)
+		stkctr = smp_create_src_stkctr(l4, args, kw);
 
 	smp->flags = SMP_F_VOL_TEST;
 	smp->type = SMP_T_UINT;
