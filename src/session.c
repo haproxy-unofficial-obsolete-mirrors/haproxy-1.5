@@ -2293,7 +2293,7 @@ struct task *process_session(struct task *t)
 
 			/* Now we can add the server name to a header (if requested) */
 			/* check for HTTP mode and proxy server_name_hdr_name != NULL */
-			if ((s->si[1].state >= SI_ST_CON) &&
+			if ((s->si[1].state >= SI_ST_CON) && (s->si[1].state < SI_ST_CLO) &&
 			    (s->be->server_id_hdr_name != NULL) &&
 			    (s->be->mode == PR_MODE_HTTP) &&
 			    objt_server(s->target)) {
