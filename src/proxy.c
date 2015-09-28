@@ -739,7 +739,8 @@ void soft_stop(void)
 
 	prs = peers;
 	while (prs) {
-		stop_proxy((struct proxy *)prs->peers_fe);
+		if (prs->peers_fe)
+			stop_proxy(prs->peers_fe);
 		prs = prs->next;
 	}
 	/* signal zero is used to broadcast the "stopping" event */
@@ -873,8 +874,8 @@ void pause_proxies(void)
 
 	prs = peers;
 	while (prs) {
-		p = prs->peers_fe;
-		err |= !pause_proxy(p);
+		if (prs->peers_fe)
+			err |= !pause_proxy(prs->peers_fe);
 		prs = prs->next;
         }
 
@@ -907,8 +908,8 @@ void resume_proxies(void)
 
 	prs = peers;
 	while (prs) {
-		p = prs->peers_fe;
-		err |= !resume_proxy(p);
+		if (prs->peers_fe)
+			err |= !resume_proxy(prs->peers_fe);
 		prs = prs->next;
         }
 
