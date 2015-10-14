@@ -1888,6 +1888,12 @@ bind /<path> [, ...] [param*]
         listen external_bind_app1
             bind fd@${FD_APP1}
 
+  Note: regarding Linux's abstract namespace sockets, HAProxy uses the whole
+        sun_path length is used for the address length. Some other programs
+        such as socat use the string length only by default. Pass the option
+        ",unix-tightsocklen=0" to any abstract socket definition in socat to
+        make it compatible with HAProxy's.
+
   See also : "source", "option forwardfor", "unix-bind" and the PROXY protocol
              documentation, and section 5 about bind options.
 
@@ -3135,7 +3141,7 @@ http-request { allow | deny | tarpit | auth [realm <realm>] | redirect <rule> |
   Example:
         http-request set-header X-Haproxy-Current-Date %T
         http-request set-header X-SSL                  %[ssl_fc]
-        http-request set-header X-SSL-Session_ID       %[ssl_fc_session_id]
+        http-request set-header X-SSL-Session_ID       %[ssl_fc_session_id,hex]
         http-request set-header X-SSL-Client-Verify    %[ssl_c_verify]
         http-request set-header X-SSL-Client-DN        %{+Q}[ssl_c_s_dn]
         http-request set-header X-SSL-Client-CN        %{+Q}[ssl_c_s_dn(cn)]
@@ -5443,7 +5449,7 @@ redirect scheme   <sch> [code <code>] <option> [{if | unless} <condition>]
               is desired. Only codes 301, 302, 303, 307 and 308 are supported,
               with 302 used by default if no code is specified. 301 means
               "Moved permanently", and a browser may cache the Location. 302
-              means "Moved permanently" and means that the browser should not
+              means "Moved temporarily" and means that the browser should not
               cache the redirection. 303 is equivalent to 302 except that the
               browser will fetch the location with a GET method. 307 is just
               like 302 but makes it clear that the same method must be reused.
@@ -5995,6 +6001,12 @@ server <name> <address>[:[port]] [param*]
         server backup ${SRV_BACKUP}:1080 backup
         server www1_dc1 ${LAN_DC1}.101:80
         server www1_dc2 ${LAN_DC2}.101:80
+
+  Note: regarding Linux's abstract namespace sockets, HAProxy uses the whole
+        sun_path length is used for the address length. Some other programs
+        such as socat use the string length only by default. Pass the option
+        ",unix-tightsocklen=0" to any abstract socket definition in socat to
+        make it compatible with HAProxy's.
 
   See also: "default-server", "http-send-name-header" and section 5 about
              server options
@@ -12381,7 +12393,7 @@ Please refer to the table below for currently defined variables :
   |   | %hrl | captured_request_headers CLF style            | string list |
   |   | %hs  | captured_response_headers default style       | string      |
   |   | %hsl | captured_response_headers CLF style           | string list |
-  |   | %ms  | accept date milliseconds                      | numeric     |
+  |   | %ms  | accept date milliseconds (left-padded with 0) | numeric     |
   |   | %pid | PID                                           | numeric     |
   | H | %r   | http_request                                  | string      |
   |   | %rc  | retries                                       | numeric     |

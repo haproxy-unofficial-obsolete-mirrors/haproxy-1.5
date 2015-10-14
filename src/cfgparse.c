@@ -703,6 +703,11 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 			goto out;
 		}
 		global.tune.bufsize = atol(args[1]);
+		if (global.tune.bufsize <= 0) {
+			Alert("parsing [%s:%d] : '%s' expects a positive integer argument.\n", file, linenum, args[0]);
+			err_code |= ERR_ALERT | ERR_FATAL;
+			goto out;
+		}
 		if (global.tune.maxrewrite >= global.tune.bufsize / 2)
 			global.tune.maxrewrite = global.tune.bufsize / 2;
 		chunk_init(&trash, realloc(trash.str, global.tune.bufsize), global.tune.bufsize);
@@ -5434,8 +5439,8 @@ stats_error_parsing:
 		}
 
 		if (rc >= HTTP_ERR_SIZE) {
-			Warning("parsing [%s:%d] : status code %d not handled, error relocation will be ignored.\n",
-				file, linenum, errnum);
+			Warning("parsing [%s:%d] : status code %d not handled by '%s', error relocation will be ignored.\n",
+				file, linenum, errnum, args[0]);
 			free(err);
 		}
 	}
@@ -5494,8 +5499,8 @@ stats_error_parsing:
 		}
 
 		if (rc >= HTTP_ERR_SIZE) {
-			Warning("parsing [%s:%d] : status code %d not handled, error customization will be ignored.\n",
-				file, linenum, errnum);
+			Warning("parsing [%s:%d] : status code %d not handled by '%s', error customization will be ignored.\n",
+				file, linenum, errnum, args[0]);
 			err_code |= ERR_WARN;
 			free(err);
 		}
@@ -6191,6 +6196,12 @@ int check_config_validity()
 		case PR_MODE_HTTP:
 			curproxy->http_needed = 1;
 			break;
+		}
+
+		if ((curproxy->cap & PR_CAP_FE) && LIST_ISEMPTY(&curproxy->conf.listeners)) {
+			Warning("config : %s '%s' has no 'bind' directive. Please declare it as a backend if this was intended.\n",
+			        proxy_type_str(curproxy), curproxy->id);
+			err_code |= ERR_WARN;
 		}
 
 		if ((curproxy->cap & PR_CAP_BE) && (curproxy->mode != PR_MODE_HEALTH)) {
