@@ -1,6 +1,40 @@
 ChangeLog :
 ===========
 
+2015/11/01 : 1.5.15
+    - BUG/MINOR: log: missing some ARGC_* entries in fmt_directives()
+    - DOC: usesrc root privileges requirements
+    - BUILD: ssl: Allow building against libssl without SSLv3.
+    - DOC/MINOR: fix OpenBSD versions where haproxy works
+    - BUG/MINOR: http/sample: gmtime/localtime can fail
+    - DOC: typo in 'redirect', 302 code meaning
+    - DOC: mention that %ms is left-padded with zeroes.
+    - CLEANUP: .gitignore: ignore more test files
+    - CLEANUP: .gitignore: finally ignore everything but what is known.
+    - MEDIUM: config: emit a warning on a frontend without listener
+    - BUG/MEDIUM: counters: ensure that src_{inc,clr}_gpc0 creates a missing entry
+    - DOC: ssl: missing LF
+    - DOC: fix example of http-request using ssl_fc_session_id
+    - BUG/MINOR: http: remove stupid HTTP_METH_NONE entry
+    - BUG/MAJOR: http: don't call http_send_name_header() after an error
+    - BUG/MINOR: tools: make str2sa_range() report unresolvable addresses
+    - BUG/MEDIUM: acl: always accept match "found"
+    - DOC: clarify how to make use of abstract sockets in socat
+    - CLEANUP: config: make the errorloc/errorfile messages less confusing
+    - BUG/MINOR: config: check that tune.bufsize is always positive
+    - BUG/MEDIUM: proxy: ignore stopped peers
+    - BUG/MEDIUM: proxy: do not wake stopped proxies' tasks during soft_stop()
+    - BUG/MINOR: http: Add OPTIONS in supported http methods (found by find_http_meth)
+    - BUILD: enable build on Linux/s390x
+    - DOC: backend section missing parameters
+    - DOC: stats paramaters available in frontend
+    - BUG/MINOR: config: make the stats socket pass the correct proxy to the parsers
+    - BUG/MEDIUM: pattern: fixup use_after_free in the pat_ref_delete_by_id
+    - CLEANUP: don't ignore debian/ directory if present
+    - FIX: small typo in an example using the "Referer" header
+    - BUG/MEDIUM: config: count memory limits on 64 bits, not 32
+    - DOC: add a CONTRIBUTING file
+
 2015/07/03 : 1.5.14
     - BUILD/MINOR: tools: rename popcount to my_popcountl
     - BUG/MAJOR: buffers: make the buffer_slow_realign() function respect output data

@@ -2,9 +2,9 @@
                                 HAProxy
                           Configuration Manual
                          ----------------------
-                             version 1.5.14
+                             version 1.5.15
                              willy tarreau
-                               2015/07/02
+                               2015/11/01
 
 
 This document covers the configuration language as implemented in the version
@@ -1367,10 +1367,11 @@ option log-health-checks             (*)  X          -         X         X
 option log-separate-errors           (*)  X          X         X         -
 option logasap                       (*)  X          X         X         -
 option mysql-check                        X          -         X         X
-option pgsql-check                        X          -         X         X
 option nolinger                      (*)  X          X         X         X
 option originalto                         X          X         X         X
 option persist                       (*)  X          -         X         X
+option pgsql-check                        X          -         X         X
+option prefer-last-server            (*)  X          -         X         X
 option redispatch                    (*)  X          -         X         X
 option redis-check                        X          -         X         X
 option smtpchk                            X          -         X         X
@@ -1419,18 +1420,18 @@ rsprep                                    -          X         X         X
 server                                    -          -         X         X
 source                                    X          -         X         X
 srvtimeout                  (deprecated)  X          -         X         X
-stats admin                               -          -         X         X
-stats auth                                X          -         X         X
-stats enable                              X          -         X         X
-stats hide-version                        X          -         X         X
-stats http-request                        -          -         X         X
-stats realm                               X          -         X         X
-stats refresh                             X          -         X         X
-stats scope                               X          -         X         X
-stats show-desc                           X          -         X         X
-stats show-legends                        X          -         X         X
-stats show-node                           X          -         X         X
-stats uri                                 X          -         X         X
+stats admin                               -          X         X         X
+stats auth                                X          X         X         X
+stats enable                              X          X         X         X
+stats hide-version                        X          X         X         X
+stats http-request                        -          X         X         X
+stats realm                               X          X         X         X
+stats refresh                             X          X         X         X
+stats scope                               X          X         X         X
+stats show-desc                           X          X         X         X
+stats show-legends                        X          X         X         X
+stats show-node                           X          X         X         X
+stats uri                                 X          X         X         X
 -- keyword -------------------------- defaults - frontend - listen -- backend -
 stick match                               -          -         X         X
 stick on                                  -          -         X         X
@@ -2061,7 +2062,7 @@ capture request header <name> len <length>
   Example:
         capture request header Host len 15
         capture request header X-Forwarded-For len 15
-        capture request header Referrer len 15
+        capture request header Referer len 15
 
   See also : "capture cookie", "capture response header" as well as section 8
              about logging.
