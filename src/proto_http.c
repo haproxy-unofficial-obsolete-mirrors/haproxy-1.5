@@ -4946,11 +4946,13 @@ void http_end_txn_clean_session(struct session *s)
 			s->rep->flags |= CF_EXPECT_MORE;
 	}
 
-	/* we're removing the analysers, we MUST re-enable events detection */
+	/* we're removing the analysers, we MUST re-enable events detection.
+	 * We don't enable close on the response channel since it's either
+	 * already closed, or in keep-alive with an idle connection handler.
+	 */
 	channel_auto_read(s->req);
 	channel_auto_close(s->req);
 	channel_auto_read(s->rep);
-	channel_auto_close(s->rep);
 
 	/* we're in keep-alive with an idle connection, monitor it */
 	si_idle_conn(s->req->cons);
