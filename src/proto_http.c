@@ -11050,9 +11050,11 @@ find_url_param_pos(char* query_string, size_t query_string_l,
 }
 
 /*
- * Given a url parameter name, returns its value and size into *value and
- * *value_l respectively, and returns non-zero. If the parameter is not found,
- * zero is returned and value/value_l are not touched.
+ * Given a url parameter name and a query string, find the next value.
+ * An empty url_param_name matches the first available parameter.
+ * If the parameter is found, 1 is returned and *value / *value_l are updated
+ * to respectively provide a pointer to the value and its length.
+ * Otherwise, 0 is returned and value/value_l are not modified.
  */
 static int
 find_url_param_value(char* path, size_t path_l,
@@ -11082,7 +11084,7 @@ find_url_param_value(char* path, size_t path_l,
 
 	*value = value_start;
 	*value_l = value_end - value_start;
-	return value_end != value_start;
+	return 1;
 }
 
 static int
