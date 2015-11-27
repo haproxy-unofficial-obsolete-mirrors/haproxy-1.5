@@ -1695,6 +1695,12 @@ static int stats_sock_parse_request(struct stream_interface *si, char *line)
 				if (strcmp(args[3], "global") == 0) {
 					int v;
 
+					if (s->listener->bind_conf->level < ACCESS_LVL_ADMIN) {
+						appctx->ctx.cli.msg = stats_permission_denied_msg;
+						appctx->st0 = STAT_CLI_PRINT;
+						return 1;
+					}
+
 					if (!*args[4]) {
 						appctx->ctx.cli.msg = "Expects a maximum input byte rate in kB/s.\n";
 						appctx->st0 = STAT_CLI_PRINT;

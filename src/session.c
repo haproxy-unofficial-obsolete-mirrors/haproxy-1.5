@@ -2213,10 +2213,6 @@ struct task *process_session(struct task *t)
 	if (unlikely((s->req->flags & (CF_SHUTW|CF_SHUTW_NOW|CF_AUTO_CLOSE|CF_SHUTR)) ==
 		     (CF_AUTO_CLOSE|CF_SHUTR))) {
 		channel_shutw_now(s->req);
-		if (tick_isset(s->fe->timeout.clientfin)) {
-			s->rep->wto = s->fe->timeout.clientfin;
-			s->rep->wex = tick_add(now_ms, s->rep->wto);
-		}
 	}
 
 	/* shutdown(write) pending */
@@ -2241,10 +2237,6 @@ struct task *process_session(struct task *t)
 		if (s->req->prod->flags & SI_FL_NOHALF)
 			s->req->prod->flags |= SI_FL_NOLINGER;
 		si_shutr(s->req->prod);
-		if (tick_isset(s->fe->timeout.clientfin)) {
-			s->rep->wto = s->fe->timeout.clientfin;
-			s->rep->wex = tick_add(now_ms, s->rep->wto);
-		}
 	}
 
 	/* it's possible that an upper layer has requested a connection setup or abort.
@@ -2391,10 +2383,6 @@ struct task *process_session(struct task *t)
 	if (unlikely((s->rep->flags & (CF_SHUTW|CF_SHUTW_NOW|CF_AUTO_CLOSE|CF_SHUTR)) ==
 		     (CF_AUTO_CLOSE|CF_SHUTR))) {
 		channel_shutw_now(s->rep);
-		if (tick_isset(s->be->timeout.serverfin)) {
-			s->req->wto = s->be->timeout.serverfin;
-			s->req->wex = tick_add(now_ms, s->req->wto);
-		}
 	}
 
 	/* shutdown(write) pending */
@@ -2417,10 +2405,6 @@ struct task *process_session(struct task *t)
 		if (s->rep->prod->flags & SI_FL_NOHALF)
 			s->rep->prod->flags |= SI_FL_NOLINGER;
 		si_shutr(s->rep->prod);
-		if (tick_isset(s->be->timeout.serverfin)) {
-			s->req->wto = s->be->timeout.serverfin;
-			s->req->wex = tick_add(now_ms, s->req->wto);
-		}
 	}
 
 	if (s->req->prod->state == SI_ST_DIS || s->req->cons->state == SI_ST_DIS)
