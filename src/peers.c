@@ -720,7 +720,7 @@ switchstate:
 							ts = stktable_store(ps->table->table, newts, 0);
 							newts = NULL; /* don't reuse it */
 
-							ts->upd.key= (++ps->table->table->update)+(2^31);
+							ts->upd.key= (++ps->table->table->update)+(2147483648U);
 							eb = eb32_insert(&ps->table->table->updates, &ts->upd);
 							if (eb != &ts->upd) {
 								eb32_delete(eb);
