@@ -11245,7 +11245,7 @@ static int val_hdr(struct arg *arg, char **err_msg)
  */
 static int sample_conv_http_date(const struct arg *args, struct sample *smp)
 {
-	const char day[7][4] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+	const char day[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 	const char mon[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 	struct chunk *temp;
 	struct tm *tm;
