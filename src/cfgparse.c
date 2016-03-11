@@ -913,7 +913,11 @@ int cfg_parse_global(const char *file, int linenum, char **args, int kwm)
 			err_code |= ERR_ALERT | ERR_FATAL;
 			goto out;
 		}
-		global.gid = atol(args[1]);
+		if (strl2irc(args[1], strlen(args[1]), &global.gid) != 0) {
+			Warning("parsing [%s:%d] :  gid: string '%s' is not a number.\n   | You might want to use the 'group' parameter to use a system group name.\n", file, linenum, args[1]);
+			err_code |= ERR_WARN;
+			goto out;
+		}
 	}
 	/* user/group name handling */
 	else if (!strcmp(args[0], "user")) {
