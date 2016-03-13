@@ -1402,11 +1402,12 @@ get_http_auth(struct session *s)
 	h = ctx.line + ctx.val;
 
 	p = memchr(h, ' ', ctx.vlen);
-	if (!p || p == h)
+	len = p - h;
+	if (!p || len <= 0)
 		return 0;
 
-	chunk_initlen(&auth_method, h, 0, p-h);
-	chunk_initlen(&txn->auth.method_data, p+1, 0, ctx.vlen-(p-h)-1);
+	chunk_initlen(&auth_method, h, 0, len);
+	chunk_initlen(&txn->auth.method_data, p + 1, 0, ctx.vlen - len - 1);
 
 	if (!strncasecmp("Basic", auth_method.str, auth_method.len)) {
 
