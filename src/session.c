@@ -887,6 +887,7 @@ static int sess_update_st_cer(struct session *s, struct stream_interface *si)
 	 */
 	if (objt_server(s->target) &&
 	    (si->conn_retries == 0 ||
+	     (__objt_server(s->target)->state < SRV_ST_RUNNING) ||
 	     (!(s->flags & SN_DIRECT) && s->be->srv_act > 1 &&
 	      ((s->be->lbprm.algo & BE_LB_KIND) == BE_LB_KIND_RR))) &&
 	    s->be->options & PR_O_REDISP && !(s->flags & SN_FORCE_PRST)) {

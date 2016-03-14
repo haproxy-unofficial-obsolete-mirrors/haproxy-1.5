@@ -4778,6 +4778,7 @@ static int stats_send_http_redirect(struct stream_interface *si)
 		     "Content-Type: text/plain\r\n"
 		     "Connection: close\r\n"
 		     "Location: %s;st=%s%s%s%s\r\n"
+		     "Content-length: 0\r\n"
 		     "\r\n",
 		     uri->uri_prefix,
 		     ((appctx->ctx.stats.st_code > STAT_STATUS_INIT) &&
@@ -5196,7 +5197,7 @@ static int stats_dump_full_sess_to_buffer(struct stream_interface *si, struct se
 			              obj_base_ptr(conn->target));
 
 			chunk_appendf(&trash,
-			              "      flags=0x%08x fd=%d fd_spec_e=%02x fd_spec_p=%d updt=%d\n",
+			              "      flags=0x%08x fd=%d fd.state=%02x fd.cache=%d updt=%d\n",
 			              conn->flags,
 			              conn->t.sock.fd,
 			              conn->t.sock.fd >= 0 ? fdtab[conn->t.sock.fd].state : 0,
@@ -5364,7 +5365,7 @@ static int stats_map_lookup(struct stream_interface *si)
 
 			/* execute pattern matching */
 			sample.type = SMP_T_STR;
-			sample.flags |= SMP_F_CONST;
+			sample.flags = SMP_F_CONST;
 			sample.data.str.len = appctx->ctx.map.chunk.len;
 			sample.data.str.str = appctx->ctx.map.chunk.str;
 			if (appctx->ctx.map.expr->pat_head->match &&

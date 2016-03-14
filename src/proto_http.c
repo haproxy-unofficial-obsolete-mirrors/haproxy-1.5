@@ -1402,11 +1402,12 @@ get_http_auth(struct session *s)
 	h = ctx.line + ctx.val;
 
 	p = memchr(h, ' ', ctx.vlen);
-	if (!p || p == h)
+	len = p - h;
+	if (!p || len <= 0)
 		return 0;
 
-	chunk_initlen(&auth_method, h, 0, p-h);
-	chunk_initlen(&txn->auth.method_data, p+1, 0, ctx.vlen-(p-h)-1);
+	chunk_initlen(&auth_method, h, 0, len);
+	chunk_initlen(&txn->auth.method_data, p + 1, 0, ctx.vlen - len - 1);
 
 	if (!strncasecmp("Basic", auth_method.str, auth_method.len)) {
 
@@ -6775,12 +6776,15 @@ int http_response_forward_body(struct session *s, struct channel *res, int an_bi
 	if (res->flags & CF_SHUTR) {
 		if ((s->req->flags & (CF_SHUTR|CF_SHUTW)) == (CF_SHUTR|CF_SHUTW))
 			goto aborted_xfer;
-		if (!(s->flags & SN_ERR_MASK))
-			s->flags |= SN_ERR_SRVCL;
-		s->be->be_counters.srv_aborts++;
-		if (objt_server(s->target))
-			objt_server(s->target)->counters.srv_aborts++;
-		goto return_bad_res_stats_ok;
+		/* If we have some pending data, we continue the processing */
+		if (!buffer_pending(res->buf)) {
+			if (!(s->flags & SN_ERR_MASK))
+				s->flags |= SN_ERR_SRVCL;
+			s->be->be_counters.srv_aborts++;
+			if (objt_server(s->target))
+				objt_server(s->target)->counters.srv_aborts++;
+			goto return_bad_res_stats_ok;
+		}
 	}
 
 	/* we need to obey the req analyser, so if it leaves, we must too */
@@ -11245,7 +11249,7 @@ static int val_hdr(struct arg *arg, char **err_msg)
  */
 static int sample_conv_http_date(const struct arg *args, struct sample *smp)
 {
-	const char day[7][4] = { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+	const char day[7][4] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
 	const char mon[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
 	struct chunk *temp;
 	struct tm *tm;

@@ -3988,9 +3988,12 @@ static int bind_parse_npn(char **args, int cur_arg, struct proxy *px, struct bin
 
 	free(conf->npn_str);
 
-	/* the NPN string is built as a suite of (<len> <name>)* */
+	/* the NPN string is built as a suite of (<len> <name>)*,
+	 * so we reuse each comma to store the next <len> and need
+	 * one more for the end of the string.
+	 */
 	conf->npn_len = strlen(args[cur_arg + 1]) + 1;
-	conf->npn_str = calloc(1, conf->npn_len);
+	conf->npn_str = calloc(1, conf->npn_len + 1);
 	memcpy(conf->npn_str + 1, args[cur_arg + 1], conf->npn_len);
 
 	/* replace commas with the name length */
@@ -4036,9 +4039,12 @@ static int bind_parse_alpn(char **args, int cur_arg, struct proxy *px, struct bi
 
 	free(conf->alpn_str);
 
-	/* the ALPN string is built as a suite of (<len> <name>)* */
+	/* the ALPN string is built as a suite of (<len> <name>)*,
+	 * so we reuse each comma to store the next <len> and need
+	 * one more for the end of the string.
+	 */
 	conf->alpn_len = strlen(args[cur_arg + 1]) + 1;
-	conf->alpn_str = calloc(1, conf->alpn_len);
+	conf->alpn_str = calloc(1, conf->alpn_len + 1);
 	memcpy(conf->alpn_str + 1, args[cur_arg + 1], conf->alpn_len);
 
 	/* replace commas with the name length */

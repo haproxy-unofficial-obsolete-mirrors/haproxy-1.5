@@ -1,6 +1,55 @@
 ChangeLog :
 ===========
 
+2016/03/14 : 1.5.16
+    - BUG/BUILD: replace haproxy-systemd-wrapper with $(EXTRA) in install-bin.
+    - BUG/MINOR: acl: don't use record layer in req_ssl_ver
+    - BUG: http: do not abort keep-alive connections on server timeout
+    - BUG/MEDIUM: http: switch the request channel to no-delay once done.
+    - MINOR: config: extend the default max hostname length to 64 and beyond
+    - BUG/MEDIUM: http: don't enable auto-close on the response side
+    - BUG/MEDIUM: stream: fix half-closed timeout handling
+    - BUG/MEDIUM: cli: changing compression rate-limiting must require admin level
+    - BUILD: freebsd: double declaration
+    - BUG/MEDIUM: sample: urlp can't match an empty value
+    - BUG/MEDIUM: peers: table entries learned from a remote are pushed to others after a random delay.
+    - BUG/MEDIUM: peers: old stick table updates could be repushed.
+    - CLEANUP: haproxy: using _GNU_SOURCE instead of __USE_GNU macro.
+    - BUG/MINOR: chunk: make chunk_dup() always check and set dst->size
+    - MINOR: chunks: ensure that chunk_strcpy() adds a trailing zero
+    - MINOR: chunks: add chunk_strcat() and chunk_newstr()
+    - MINOR: chunk: make chunk_initstr() take a const string
+    - BUG/MEDIUM: config: Adding validation to stick-table expire value.
+    - BUG/MEDIUM: sample: http_date() doesn't provide the right day of the week
+    - BUG/MEDIUM: channel: fix miscalculation of available buffer space.
+    - BUG/MINOR: stream: don't force retries if the server is DOWN
+    - MINOR: unix: don't mention free ports on EAGAIN
+    - BUG/CLEANUP: CLI: report the proper field states in "show sess"
+    - MINOR: stats: send content-length with the redirect to allow keep-alive
+    - BUG: stream_interface: Reuse connection even if the output channel is empty
+    - DOC: remove old tunnel mode assumptions
+    - DOC: add server name at rate-limit sessions example
+    - BUG/MEDIUM: ssl: fix off-by-one in ALPN list allocation
+    - BUG/MEDIUM: ssl: fix off-by-one in NPN list allocation
+    - BUG/MEDIUM: stats: stats bind-process doesn't propagate the process mask correctly
+    - BUG/MINOR: http: Be sure to process all the data received from a server
+    - BUG/MEDIUM: chunks: always reject negative-length chunks
+    - BUG/MINOR: systemd: ensure we don't miss signals
+    - BUG/MINOR: systemd: report the correct signal in debug message output
+    - BUG/MINOR: systemd: propagate the correct signal to haproxy
+    - MINOR: systemd: ensure a reload doesn't mask a stop
+    - CLEANUP: stats: Avoid computation with uninitialized bits.
+    - CLEANUP: pattern: Ignore unknown samples in pat_match_ip().
+    - CLEANUP: map: Avoid memory leak in out-of-memory condition.
+    - BUG/MINOR: tcpcheck: conf parsing error when no port configured on server and last rule is a CONNECT with no port
+    - BUG/MINOR: tcpcheck: fix incorrect list usage resulting in failure to load certain configs
+    - MINOR: cfgparse: warn when uid parameter is not a number
+    - MINOR: cfgparse: warn when gid parameter is not a number
+    - BUG/MINOR: standard: Avoid free of non-allocated pointer
+    - BUG/MINOR: pattern: Avoid memory leak on out-of-memory condition
+    - CLEANUP: http: fix a build warning introduced by a recent fix
+    - BUG/MINOR: log: GMT offset not updated when entering/leaving DST
+
 2015/11/01 : 1.5.15
     - BUG/MINOR: log: missing some ARGC_* entries in fmt_directives()
     - DOC: usesrc root privileges requirements

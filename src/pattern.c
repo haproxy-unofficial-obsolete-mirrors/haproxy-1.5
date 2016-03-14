@@ -887,6 +887,9 @@ struct pattern *pat_match_ip(struct sample *smp, struct pattern_expr *expr, int 
 			}
 			else
 				continue;
+		} else {
+		  /* impossible */
+		  continue;
 		}
 
 		/* Check if the input sample match the current pattern. */
@@ -1901,6 +1904,7 @@ struct pattern_expr *pattern_new_expr(struct pattern_head *head, struct pat_ref 
 		/* Get a lot of memory for the expr struct. */
 		expr = malloc(sizeof(*expr));
 		if (!expr) {
+			free(list);
 			memprintf(err, "out of memory");
 			return NULL;
 		}

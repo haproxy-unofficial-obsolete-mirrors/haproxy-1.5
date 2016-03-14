@@ -1,6 +1,6 @@
 /*
  * HA-Proxy : High Availability-enabled HTTP/TCP proxy
- * Copyright 2000-2014  Willy Tarreau <w@1wt.eu>.
+ * Copyright 2000-2016  Willy Tarreau <w@1wt.eu>.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -215,7 +215,7 @@ unsigned int warned = 0;
 void display_version()
 {
 	printf("HA-Proxy version " HAPROXY_VERSION " " HAPROXY_DATE"\n");
-	printf("Copyright 2000-2015 Willy Tarreau <willy@haproxy.org>\n\n");
+	printf("Copyright 2000-2016 Willy Tarreau <willy@haproxy.org>\n\n");
 }
 
 void display_build_opts()
@@ -502,7 +502,6 @@ void init(int argc, char **argv)
 	struct wordlist *wl;
 	char *progname;
 	char *change_dir = NULL;
-	struct tm curtime;
 
 	chunk_init(&trash, malloc(global.tune.bufsize), global.tune.bufsize);
 	alloc_trash_buffers(global.tune.bufsize);
@@ -527,14 +526,11 @@ void init(int argc, char **argv)
 	global.rlimit_memmax = HAPROXY_MEMMAX;
 #endif
 
+	tzset();
 	tv_update_date(-1,-1);
 	start_date = now;
 
 	srandom(now_ms - getpid());
-
-	/* Get the numeric timezone. */
-	get_localtime(start_date.tv_sec, &curtime);
-	strftime(localtimezone, 6, "%z", &curtime);
 
 	signal_init();
 	if (init_acl() != 0)
